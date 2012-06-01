@@ -261,13 +261,100 @@
 	 * @return array command parts
 	 *
 	 * parses a command string for a command name and arguments.
+	 * NOTE: not completed
 	 */
 	Command.parse = function (command) {
-		var parts = command.split(Command.keys.space.key);
-		return parts;
+		var parts = command.split(this.keys.space.key);
+		var args = parts.splice(1).join(this.keys.space.key), argv = {}, argc = 0;
+
+		var arg_key = "-", arg_label = "--", arg_string = /'|"/;
+		var state_arg, state_arg_key, state_arg_label, state_val, state_string;
+		var ac, last = last_arg = last_val = "";
+
+		// parse the arguments
+		for (var i = 0, max = args.length; i < max; i++) {
+			ac = args.charAt(i);
+
+			// spaces
+			if (ac === " ") {
+				if (state_arg) {
+					state_arg = false;
+
+					if (!(last_arg in argv)) {
+						argv[ last_arg ] = true;
+
+						// string check
+						if (args.charAt(i + 1)) {
+							if (!args.charAt(i + 1).match(arg_string)) {
+								last_arg = "";
+							}
+						}
+					}
+
+					continue;
+				}
+				if (state_string) {
+					last_val += " ";
+					continue;
+				}
+				if (state_val) {
+					state_val = false;
+					continue;
+				}
+			}
+
+			// arg start check
+			else if (ac === arg_key) {
+				last_arg += ac;
+				state_arg = true;
+				state_arg_key = false;
+				state_arg_label = false;
+
+				// arg character
+				if (last_arg === arg_key) {
+					state_arg_key = true;
+					state_arg_label = false;
+				}
+
+				// arg label
+				else if (last_arg === arg_label) {
+					state_arg_key = false;
+					state_arg_label = true;
+					last_arg = "";
+				}
+			}
+
+			// arg check
+			else if (state_arg) {
+				if (state_arg_key) {
+					last_arg = ac;
+				}
+				else {
+					last_arg += ac;
+				}
+			}
+
+			// string check start/end
+			else if (ac.match(arg_string)) {
+				if (state_string) {
+					argv[ last_arg || argc ] = last_val;
+				}
+				else {
+					last_val = "";
+				}
+
+				state_string = !state_string;
+			}
+			// string character
+			else if (state_string) {
+				last_val += ac;
+			}
+		}
+
+		return parts.push(argv, argc, args), parts;
 	};
 
-	/**
+	/**i
 	 * @var ui
 	 */
 	Command.ui = { node: null };
