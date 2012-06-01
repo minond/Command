@@ -265,7 +265,7 @@
 	 */
 	Command.parse = function (command) {
 		var parts = command.split(this.keys.space.key);
-		var args = parts.splice(1).join(this.keys.space.key), argv = {}, argc = 0;
+		var args = parts.splice(1).join(this.keys.space.key).replace(/^\s+|\s+$/g, ''), argv = {}, argc = 0, valid = true;
 
 		var arg_key = "-", arg_label = "--", arg_string = /'|"/;
 		var state_arg, state_arg_key, state_arg_label, state_val, state_string;
@@ -327,6 +327,10 @@
 			// arg check
 			else if (state_arg) {
 				if (state_arg_key) {
+					if (last_arg !== arg_key) {
+						argv[ last_arg ] = true;
+					}
+
 					last_arg = ac;
 				}
 				else {
@@ -337,7 +341,8 @@
 			// string check start/end
 			else if (ac.match(arg_string)) {
 				if (state_string) {
-					argv[ last_arg || argc ] = last_val;
+					argv[ last_arg || argc++ ] = last_val;
+					last_arg = "";
 				}
 				else {
 					last_val = "";
@@ -351,7 +356,24 @@
 			}
 		}
 
-		return parts.push(argv, argc, args), parts;
+		if (last_arg && state_arg) {
+			argv[ last_arg ] = true;
+			state_val = false;
+			state_arg = false;
+		}
+
+		// valid end state
+		if (state_arg, state_val, state_string) {
+			valid = false;
+		}
+
+		// arg count
+		argc = 0;
+		for (var i in argv) {
+			argc++;
+		}
+
+		return parts.push(argv, args, argc, valid), parts;
 	};
 
 	/**i
