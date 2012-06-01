@@ -11,6 +11,31 @@
 	Command.registered_shortcuts = [];
 
 	/**
+	 * @var keys
+	 */
+	Command.keys = {};
+	Command.keys.empty = "";
+	Command.keys.esc = 27;
+	Command.keys.shift = 16;
+	Command.keys.enter = 13;
+	Command.keys.backspace = 8;
+	Command.keys.space = { key: " ", code: 32 };
+	Command.keys.colon = { key: ":", code: 186 };
+
+	Command.keys.real = (function () {
+		var special = "~`!@#$%^&*()_+-=<>,.?/:;\\\"'[]{}".split(this.empty);
+		var special_map = {};
+
+		for (var i = 0, max = special.length; i < max; i++) {
+			special_map[ special[ i ].charCodeAt(0) ] = special[ i ];
+		}
+
+		return function (key_code) {
+			return key_code in special_map ? special_map[ key_code ] : String.fromCharCode(key_code);
+		};
+	})();
+
+	/**
 	 * @var state
 	 * @method string saved string getter
 	 * @method store save keys pressed
@@ -38,7 +63,7 @@
 
 			store: function (str) {
 				if (!shortcut) {
-					shortcut = "";
+					shortcut = Command.keys.empty;
 				}
 
 				shortcut += str;
@@ -49,7 +74,7 @@
 			},
 
 			reset: function () {
-				shortcut = "";
+				shortcut = Command.keys.empty;
 				key_count = 0;
 			},
 
@@ -59,7 +84,6 @@
 
 			on: function () {
 				this.reset();
-				Command.ui.show();
 				return state = 1;
 			},
 
@@ -68,7 +92,6 @@
 					clearTimeout(timer);
 				}
 
-				Command.ui.hide();
 				Command.ui.clear();
 				this.reset();
 				return state = 0;
@@ -111,9 +134,9 @@
 	Command.register = function (key, action, scope) {
 		return Command.registered_shortcuts.push({
 			key: key,
-			keys: key.split(""),
 			action: action,
 			ready: false,
+			last_command: null,
 			scope: scope || window
 		});
 	};
@@ -124,7 +147,7 @@
 	 * adds event listener 
 	 */
 	Command.start = function () {
-		document.body.addEventListener("keyup", function (e) {
+		document.body.addEventListener("keydown", function (e) {
 			Command.trigger(e);
 		});
 	};
@@ -139,22 +162,22 @@
 		var key_code = e.keyCode;
 		var key_char = String.fromCharCode(key_code);
 		var shift = e.shiftKey;
-		var shortcut;
+		var shortcut, command;
 
 		// browser short-cuts
-		if (e.ctrlKey || e.metaKey || e.altKey || e.altGraphKey || e.keyCode === 16) {
+		if (e.ctrlKey || e.metaKey || e.altKey || e.altGraphKey || e.keyCode === Command.keys.shift) {
 			return false;
 		}
 
 		// state setters
-		if (key_code === 27) {
+		if (key_code === Command.keys.esc) {
 			Command.ui.clear();
 			Command.state.off();
 
 			return;
 		}
-		else if (key_code === 186 && shift) {
-			Command.ui.write(":");
+		else if (key_code === Command.keys.colon.code && shift && !Command.state.is()) {
+			Command.ui.write(Command.keys.colon.key);
 			Command.state.countdown();
 			Command.state.on();
 
@@ -165,16 +188,20 @@
 		if (!shift) {
 			key_char = key_char.toLowerCase();
 		}
+		// space
+		if (key_code === Command.keys.space.code) {
+			key_char = Command.keys.space.key;
+		}
 
 		// state check
 		if (Command.state.is()) {
 			// enter key
-			if (key_code === 13) {
+			if (key_code === Command.keys.enter) {
 				for (var i = 0, max = Command.registered_shortcuts.length; i < max; i++) {
 					shortcut = Command.registered_shortcuts[ i ];
 
 					if (shortcut.ready) {
-						shortcut.action();
+						shortcut.action.apply(shortcut.scope, Command.parse(shortcut.last_command) );
 					}
 				}
 
@@ -183,7 +210,7 @@
 				Command.ui.clear();
 			}
 			// backspace
-			else if (key_code === 8) {
+			else if (key_code === Command.keys.backspace) {
 				Command.state.backspace();
 				Command.ui.backspace();
 			}
@@ -196,12 +223,18 @@
 				Command.state.store(key_char);
 				Command.ui.write(key_char);
 
+				// parse the command
+				command = Command.state.string();
+				command = Command.parse(command);
+				command = command[0];
+
 				// find matching short-cut
 				for (var i = 0, max = Command.registered_shortcuts.length; i < max; i++) {
 					shortcut = Command.registered_shortcuts[ i ];
 
-					if (shortcut.key === Command.state.string()) {
+					if (shortcut.key === command) {
 						shortcut.ready = true;
+						shortcut.last_command = Command.state.string();
 					}
 					else {
 						shortcut.ready = false;
@@ -214,6 +247,11 @@
 		}
 	};
 
+	Command.parse = function (command) {
+		var parts = command.split(Command.keys.space.key);
+		return parts;
+	};
+
 	Command.ui = { node: null };
 
 	Command.ui.write = function (key) {
@@ -224,7 +262,7 @@
 
 	Command.ui.clear = function () {
 		if (this.node) {
-			this.node.innerHTML = "";
+			this.node.innerHTML = Command.keys.empty;
 		}
 	};
 
@@ -245,7 +283,7 @@
 			this.node = document.createElement("div");
 			this.node.className = "Command";
 
-			this.node.style.position = "absolute";
+			this.node.style.position = "fixed";
 			this.node.style.bottom = "5px";
 			this.node.style.left = "7px";
 			this.node.style.font = "11px monospace";
@@ -254,19 +292,6 @@
 			document.body.appendChild(this.node);
 		}
 
-		this.node.style.display = "";
+		this.node.style.display = Command.keys.empty;
 	};
 })(window);
-
-window.onload = function () {
-	Command.start();
-	Command.ui.show();
-};
-
-Command.timeout = 5000;
-
-Command.register("hi", function () {
-	console.log("hi~~~");
-});
-
-

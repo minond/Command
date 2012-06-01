@@ -1,1 +1,53 @@
-<script src="Command.js"></script>
+<html>
+	<body></body>
+
+	<script type="text/javascript" src="/Test/Test.js"></script>
+	<script type="text/javascript" src="/Test/Test.ui.js"></script>
+	<script type="text/javascript" src="Command.js"></script>
+	<script type="text/javascript">
+
+var start = {
+	keyCode: Command.keys.colon.code,
+	shiftKey: true
+};
+
+var end = {
+	keyCode: Command.keys.enter
+};
+
+var commands = new Test("Random commands");
+
+commands.set_test(function (command_str) {
+	var flag = false;
+
+	Command.register(command_str.str, function () {
+		flag = true;
+	});
+
+	Command.trigger(start);
+
+	for (var i = 0, max = command_str.keys.length; i < max; i++) {
+		Command.trigger({
+			keyCode: command_str.keys[ i ].code,
+			shiftKey: command_str.keys[ i ].upper
+		});
+	}
+	
+	Command.trigger(end);
+	Test.display.print_r("Command Name", command_str.str);
+
+	return flag;
+});
+
+commands.expect(true).using(Test.arg.character(100, false));
+
+Command.timeout = 100000;
+Command.start();
+Command.ui.show();
+Test.fail_print();
+
+commands.run(10);
+Test.display.show();
+
+	</script>
+</html>
