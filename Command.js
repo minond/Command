@@ -13,22 +13,30 @@
 	/**
 	 * @var keys
 	 */
-	Command.keys = {};
-	Command.keys.empty = "";
-	Command.keys.esc = 27;
-	Command.keys.shift = 16;
-	Command.keys.enter = 13;
-	Command.keys.backspace = 8;
-	Command.keys.space = { key: " ", code: 32 };
-	Command.keys.colon = { key: ":", code: 186 };
+	Command.keys = {
+		empty: "",
+		esc: 27,
+		shift: 16,
+		enter: 13,
+		backspace: 8,
+		space: { key: " ", code: 32 },
+		colon: { key: ":", code: 186 }
+	};
 
+	/**
+	 * @name real
+	 * @param key_code int
+	 * @return string character
+	 *
+	 * converts an even key code into a character.
+	 * NOTE: this is not working correctly
+	 */
 	Command.keys.real = (function () {
 		var special = "~`!@#$%^&*()_+-=<>,.?/:;\\\"'[]{}".split(this.empty);
 		var special_map = {};
 
-		for (var i = 0, max = special.length; i < max; i++) {
+		for (var i = 0, max = special.length; i < max; i++)
 			special_map[ special[ i ].charCodeAt(0) ] = special[ i ];
-		}
 
 		return function (key_code) {
 			return key_code in special_map ? special_map[ key_code ] : String.fromCharCode(key_code);
@@ -247,24 +255,54 @@
 		}
 	};
 
+	/**
+	 * @name parse
+	 * @param string command
+	 * @return array command parts
+	 *
+	 * parses a command string for a command name and arguments.
+	 */
 	Command.parse = function (command) {
 		var parts = command.split(Command.keys.space.key);
 		return parts;
 	};
 
+	/**
+	 * @var ui
+	 */
 	Command.ui = { node: null };
 
+	/**
+	 * @name write
+	 * @param string key
+	 * @return void
+	 *
+	 * writes to the ui output
+	 */
 	Command.ui.write = function (key) {
 		if (this.node) {
 			this.node.innerHTML += key;
 		}
 	};
 
+	/**
+	 * @name clear
+	 * @return void
+	 * 
+	 * clears the ui output
+	 */
 	Command.ui.clear = function () {
 		if (this.node) {
 			this.node.innerHTML = Command.keys.empty;
 		}
 	};
+
+	/**
+	 * @name backspace
+	 * @return void
+	 *
+	 * mimics a backspace character
+	 */
 
 	Command.ui.backspace = function () {
 		if (this.node && this.node.innerHTML.length > 1) {
@@ -272,12 +310,24 @@
 		};
 	};
 
+	/**
+	 * @name hide
+	 * @return void
+	 *
+	 * hides the ui output
+	 */
 	Command.ui.hide = function () {
 		if (this.node) {
 			this.node.style.display = "none";
 		}
 	};
 
+	/**
+	 * @name show
+	 * @return void
+	 *
+	 * displays the ui output
+	 */
 	Command.ui.show = function () {
 		if (!this.node) {
 			this.node = document.createElement("div");
