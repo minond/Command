@@ -261,7 +261,7 @@
 	 * @return array command parts
 	 *
 	 * parses a command string for a command name and arguments.
-	 * NOTE: not completed
+	 * NOTE: not completed, arg=val not working, issues with non number/string values
 	 */
 	Command.parse = function (command) {
 		var parts = command.split(this.keys.space.key);
@@ -285,7 +285,7 @@
 
 						// string check
 						if (args.charAt(i + 1)) {
-							if (!args.charAt(i + 1).match(arg_string)) {
+							if (!args.charAt(i + 1).match(arg_string) && !args.charAt(i + 1).match(/\d/)) {
 								last_arg = "";
 							}
 						}
@@ -298,7 +298,15 @@
 					continue;
 				}
 				if (state_val) {
+					// number check
+					if (!last_val.match(/\D/)) {
+						last_val = +last_val;
+					}
+
+					argv[ last_arg || argc++ ] = last_val;
+					last_val = "";
 					state_val = false;
+
 					continue;
 				}
 			}
@@ -354,12 +362,26 @@
 			else if (state_string) {
 				last_val += ac;
 			}
+
+			// regular value
+			else {
+				last_val += ac;
+				state_val = true;
+			}
 		}
 
 		if (last_arg && state_arg) {
 			argv[ last_arg ] = true;
-			state_val = false;
 			state_arg = false;
+		}
+
+		if (last_val && state_val) {
+			if (!last_val.match(/\D/)) {
+				last_val = +last_val;
+			}
+
+			argv[ last_arg || argc++ ] = last_val;
+			state_val = false;
 		}
 
 		// valid end state
@@ -373,7 +395,7 @@
 			argc++;
 		}
 
-		return parts.push(argv, args, argc, valid), parts;
+		return parts.push(args, argc, argv, valid), parts;
 	};
 
 	/**i
