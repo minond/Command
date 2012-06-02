@@ -20,7 +20,9 @@
 		enter: 13,
 		backspace: 8,
 		space: { key: " ", code: 32 },
-		colon: { key: ":", code: 186 }
+		colon: { key: ":", code: 186 },
+		quote: { key: '"', code: 222 },
+		dash: { key: "-", code: 189 }
 	};
 
 	/**
@@ -34,12 +36,27 @@
 	Command.keys.real = (function () {
 		var special = "~`!@#$%^&*()_+-=<>,.?/:;\\\"'[]{}".split(this.empty);
 		var special_map = {};
+		var swap_char;
 
 		for (var i = 0, max = special.length; i < max; i++)
 			special_map[ special[ i ].charCodeAt(0) ] = special[ i ];
 
 		return function (key_code) {
-			return key_code in special_map ? special_map[ key_code ] : String.fromCharCode(key_code);
+			switch (key_code) {
+				case this.quote.code:
+					swap_char = this.quote.key;
+					break;
+
+				case this.dash.code:
+					swap_char = this.dash.key;
+					break;
+
+				default:
+					swap_char = "";
+					break;
+			}
+
+			return key_code in special_map ? special_map[ key_code ] : swap_char || String.fromCharCode(key_code);
 		};
 	})();
 
@@ -168,7 +185,7 @@
 	 */
 	Command.trigger = function (e) {
 		var key_code = e.keyCode;
-		var key_char = String.fromCharCode(key_code);
+		var key_char = this.keys.real(key_code);
 		var shift = e.shiftKey;
 		var shortcut, command;
 
@@ -209,7 +226,8 @@
 					shortcut = Command.registered_shortcuts[ i ];
 
 					if (shortcut.ready) {
-						shortcut.action.apply(shortcut.scope, Command.parse(shortcut.last_command) );
+						command = Command.parse(shortcut.last_command) || [];
+						shortcut.action.apply(shortcut.scope, [command[2], command[3]]);
 					}
 				}
 
@@ -265,9 +283,9 @@
 	 */
 	Command.parse = function (command) {
 		var parts = command.split(this.keys.space.key);
-		var args = parts.splice(1).join(this.keys.space.key).replace(/^\s+|\s+$/g, ''), argv = {}, argc = 0, valid = true;
+		var args = parts.splice(1).join(this.keys.space.key).replace(/^\s+|\s+$/g, ''), argv = { 0: parts[0] }, argc = 1, valid = true;
 
-		var arg_key = "-", arg_label = "--", arg_string = /'|"/;
+		var arg_key = "-", arg_label = "--", arg_string = /'|"/, arg_number = /\d/, arg_non_number = /\D/;
 		var state_arg, state_arg_key, state_arg_label, state_val, state_string;
 		var ac, last = last_arg = last_val = "";
 
@@ -285,7 +303,7 @@
 
 						// string check
 						if (args.charAt(i + 1)) {
-							if (!args.charAt(i + 1).match(arg_string) && !args.charAt(i + 1).match(/\d/)) {
+							if (!args.charAt(i + 1).match(arg_string) && !args.charAt(i + 1).match(arg_number)) {
 								last_arg = "";
 							}
 						}
@@ -293,13 +311,15 @@
 
 					continue;
 				}
+
 				if (state_string) {
 					last_val += " ";
 					continue;
 				}
+
 				if (state_val) {
 					// number check
-					if (!last_val.match(/\D/)) {
+					if (!last_val.match(arg_non_number)) {
 						last_val = +last_val;
 					}
 
@@ -307,6 +327,11 @@
 					last_val = "";
 					state_val = false;
 
+					continue;
+				}
+
+				if (!state_string && !state_val) {
+					last_val = "";
 					continue;
 				}
 			}
@@ -376,7 +401,7 @@
 		}
 
 		if (last_val && state_val) {
-			if (!last_val.match(/\D/)) {
+			if (!last_val.match(arg_non_number)) {
 				last_val = +last_val;
 			}
 

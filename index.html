@@ -49,5 +49,15 @@ Test.fail_print();
 commands.run(10);
 Test.display.show();
 
+Command.register("showKey", function (argc, argv) {
+	console.log(argc, argv);
+});
+
+Command.register("alert", function (argc, argv) {
+	if (argc > 1) {
+		alert(argv.message || argv.m);
+	}
+});
+
 	</script>
 </html>
