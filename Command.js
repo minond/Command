@@ -156,13 +156,14 @@
 	 *
 	 * register a new keyboard short-cut and it's action.
 	 */
-	Command.register = function (key, action, scope) {
+	Command.register = function (key, action, scope, args) {
 		return Command.registered_shortcuts.push({
 			key: key,
 			action: action,
 			ready: false,
 			last_command: null,
-			scope: scope || window
+			scope: scope || window,
+			args: args || []
 		});
 	};
 
@@ -423,6 +424,72 @@
 		return parts.push(args, argc, argv, valid), parts;
 	};
 
+	/**
+	 * @name arg
+	 * @param object argument information
+	 * @return object complete argument
+	 *
+	 * check that an anrgument has all the needed
+	 * properties to be used/checked in a command.
+	 */
+	Command.arg = function (info) {
+		info.name = info.name || "";
+		info.alias = info.alias || "";
+		info.value = info.value || false;
+		info.description = info.description || "";
+		info.usage = "usage" in info ? info.usage : true;
+
+		return info;
+	};
+
+	/**
+	 * @name usage
+	 * @param command object
+	 * @return void
+	 *
+	 * prints usage information about a command.
+	 */
+	Command.parse.usage = function (command) {
+		var argtitle, argpadding, argmax = 5, argstring, arg, args = [
+			Command.arg({ name: "checkout", value: true }),
+			Command.arg({ name: "diff" }),
+			Command.arg({ name: "reset", alias: "r" }),
+			Command.arg({ name: "checkout", value: true }),
+			Command.arg({ name: "diff" }),
+			Command.arg({ name: "reset", alias: "r" }),
+			Command.arg({ name: "checkout", value: true }),
+			Command.arg({ name: "diff" }),
+			Command.arg({ name: "reset", alias: "r" }),
+		];
+
+		argtitle = "Usage: " + command.key;
+		argpadding = argtitle.replace(/./g, Command.keys.space.key);
+
+		Command.ui.clear();
+		Command.ui.write(argtitle);
+
+		for (var i = 0, max = args.length; i < max; i++) {
+			arg = args[ i ];
+
+			if (!arg.usage) {
+				continue;
+			}
+
+			if (i > 1 && !(argmax % i)) {
+				Command.ui.write("<br />" + argpadding);
+			}
+			
+			argstring  = " [";
+			argstring += arg.alias ? "-" + arg.alias : "";
+			argstring += arg.alias && arg.name ? "|" : "";
+			argstring += arg.name ? "--" + arg.name : "";
+			argstring += arg.value ? "=&lt;value&gt;" : "";
+			argstring += "]";
+
+			Command.ui.write(argstring);
+		}
+	};
+
 	/**i
 	 * @var ui
 	 */
@@ -494,6 +561,7 @@
 			this.node.style.left = "7px";
 			this.node.style.font = "11px monospace";
 			this.node.style.color = "blue";
+			this.node.style.whiteSpace = "pre";
 
 			document.body.appendChild(this.node);
 		}
