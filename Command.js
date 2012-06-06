@@ -156,7 +156,7 @@
 	 *
 	 * register a new keyboard short-cut and it's action.
 	 */
-	Command.register = function (key, action, scope, args) {
+	Command.register = function (key, action, args, scope) {
 		return Command.registered_shortcuts.push({
 			key: key,
 			action: action,
@@ -203,6 +203,7 @@
 			return;
 		}
 		else if (key_code === Command.keys.colon.code && shift && !Command.state.is()) {
+			Command.ui.clear();
 			Command.ui.write(Command.keys.colon.key);
 			Command.state.countdown();
 			Command.state.on();
@@ -221,8 +222,16 @@
 
 		// state check
 		if (Command.state.is()) {
+			if (e.preventDefault) {
+				e.preventDefault();
+			}
+
 			// enter key
 			if (key_code === Command.keys.enter) {
+				// reset state
+				Command.state.off();
+				Command.ui.clear();
+
 				for (var i = 0, max = Command.registered_shortcuts.length; i < max; i++) {
 					shortcut = Command.registered_shortcuts[ i ];
 
@@ -231,10 +240,6 @@
 						shortcut.action.apply(shortcut.scope, [command[2], command[3]]);
 					}
 				}
-
-				// reset state
-				Command.state.off();
-				Command.ui.clear();
 			}
 			// backspace
 			else if (key_code === Command.keys.backspace) {
@@ -449,18 +454,34 @@
 	 *
 	 * prints usage information about a command.
 	 */
-	Command.parse.usage = function (command) {
-		var argtitle, argpadding, argmax = 5, argstring, arg, args = [
-			Command.arg({ name: "checkout", value: true }),
-			Command.arg({ name: "diff" }),
-			Command.arg({ name: "reset", alias: "r" }),
-			Command.arg({ name: "checkout", value: true }),
-			Command.arg({ name: "diff" }),
-			Command.arg({ name: "reset", alias: "r" }),
-			Command.arg({ name: "checkout", value: true }),
-			Command.arg({ name: "diff" }),
-			Command.arg({ name: "reset", alias: "r" }),
-		];
+	Command.usage = function (command) {
+		var descriptions = [], maxlabellen = 0, labelpadding;
+		var argtitle, argpadding, argstring, argmax = 5;
+		var arg, args = [];
+
+		for (var i = 0, max = Command.registered_shortcuts.length; i < max; i++) {
+			if (Command.registered_shortcuts[ i ].key === command) {
+				command = Command.registered_shortcuts[ i ];
+				args = command.args;
+				argfound = true;
+				break;
+			}
+		}
+
+		if (!command.args.length) {
+			return false;
+		}
+
+		labelpadding = function (str) {
+			var leftpadding = 1, rightpadding = 2;
+			var pad = maxlabellen - str.length;
+
+			while (str += Command.keys.space.key, pad-- > 0);
+			while (str = str + Command.keys.space.key, rightpadding-- > 0);
+			while (str = Command.keys.space.key + str, leftpadding-- > 0);
+
+			return str;
+		};
 
 		argtitle = "Usage: " + command.key;
 		argpadding = argtitle.replace(/./g, Command.keys.space.key);
@@ -478,6 +499,13 @@
 			if (i > 1 && !(argmax % i)) {
 				Command.ui.write("<br />" + argpadding);
 			}
+
+			if (arg.description) {
+				descriptions.push({
+					label: arg.name || arg.alias,
+					text: arg.description
+				});
+			};
 			
 			argstring  = " [";
 			argstring += arg.alias ? "-" + arg.alias : "";
@@ -488,9 +516,24 @@
 
 			Command.ui.write(argstring);
 		}
+
+		// descriptions
+		if (descriptions.length) {
+			Command.ui.write("<br /><br />");
+		}
+
+		for (var i = 0, max = descriptions.length; i < max; i++) {
+			maxlabellen = Math.max(maxlabellen, descriptions[ i ].label.length);
+		}
+
+		for (var i = 0, max = descriptions.length; i < max; i++) {
+			Command.ui.write(labelpadding(descriptions[ i ].label));
+			Command.ui.write(descriptions[ i ].text);
+			Command.ui.write("<br />");
+		}
 	};
 
-	/**i
+	/**
 	 * @var ui
 	 */
 	Command.ui = { node: null };

@@ -50,8 +50,19 @@ commands.run(10);
 Test.display.show();
 
 Command.register("showKey", function (argc, argv) {
+	if (argv.h || argv.help) {
+		Command.usage(argv[0]);
+	}
+
 	console.log(argc, argv);
-});
+}, [
+	Command.arg({
+		name: "help",
+		alias: "h",
+		value: false,
+		description: "Display information about this command"
+	})
+]);
 
 Command.register("alert", function (argc, argv) {
 	if (argc > 1) {
