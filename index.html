@@ -54,7 +54,8 @@ Command.register("showKey", function (argc, argv) {
 		Command.usage(argv[0]);
 	}
 
-	console.log(argc, argv);
+	console.log(argc);
+	console.log(Test.display.dump(argv));
 }, [
 	Command.arg({
 		name: "help",

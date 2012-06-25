@@ -20,7 +20,7 @@
 		enter: 13,
 		backspace: 8,
 		space: { key: " ", code: 32 },
-		colon: { key: ":", code: 186 },
+		colon: { key: ":", code: 58 /*186*/ },
 		quote: { key: '"', code: 222 },
 		dash: { key: "-", code: 189 }
 	};
@@ -173,8 +173,14 @@
 	 * adds event listener 
 	 */
 	Command.start = function () {
-		document.body.addEventListener("keydown", function (e) {
-			Command.trigger(e);
+		document.body.addEventListener("keypress", function (event) {
+			Command.trigger(event);
+		});
+
+		return;
+
+		document.body.addEventListener("keydown", function (event) {
+			Command.trigger(event);
 		});
 	};
 
@@ -185,7 +191,7 @@
 	 * triggers a key input
 	 */
 	Command.trigger = function (e) {
-		var key_code = e.keyCode;
+		var key_code = e.which || e.keyCode;
 		var key_char = this.keys.real(key_code);
 		var shift = e.shiftKey;
 		var shortcut, command;
